@@ -1,3 +1,13 @@
+"""
+LLM Agent Module
+
+Provides enhanced passage analysis using Groq API (Llama 3.1):
+- Context-aware emotion detection
+- Intelligent book identification
+- Abstractive summarization
+
+Includes rate limiting handling and automatic retries.
+"""
 import os
 import time
 import requests
@@ -5,9 +15,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Support Streamlit secrets for cloud deployment
 def _get_secret(key: str, default: str = "") -> str:
-    """Get secret from environment or Streamlit secrets."""
+    """Get secret from environment or Streamlit secrets (for cloud deployment)."""
     value = os.getenv(key, "")
     if not value:
         try:
@@ -18,8 +27,6 @@ def _get_secret(key: str, default: str = "") -> str:
     return value or default
 
 ALLOWED_EMOTIONS = {"joy","sadness","anger","fear","disgust","surprise","neutral"}
-
-# Max characters to send to LLM (~3000 tokens)
 MAX_TEXT_CHARS = 12000
 
 def _truncate_text(text: str, max_chars: int = MAX_TEXT_CHARS) -> str:
@@ -31,6 +38,20 @@ def _truncate_text(text: str, max_chars: int = MAX_TEXT_CHARS) -> str:
     return text[:half] + "\n\n[... truncated ...]\n\n" + text[-half:]
 
 def _call_llm(prompt: str, max_retries: int = 3) -> str:
+    """
+    Send prompt to Groq API with retry logic.
+    
+    Args:
+        prompt: The prompt to send
+        max_retries: Number of retries on rate limit (429)
+        
+    Returns:
+        LLM response text
+        
+    Raises:
+        RuntimeError: If API key not set
+        HTTPError: If request fails after retries
+    """
     api_key = _get_secret("GROQ_API_KEY")
     base_url = _get_secret("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
     model = _get_secret("GROQ_MODEL", "llama-3.1-8b-instant")

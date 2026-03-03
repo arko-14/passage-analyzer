@@ -1,9 +1,17 @@
+"""
+Passage Analyzer - Streamlit UI
+
+Main entry point for the web application. Provides interface for:
+- Text input (paste) or PDF upload
+- Optional LLM enhancement
+- Display of analysis results (word count, emotion, books, summary)
+"""
 import streamlit as st
 from pdf_utils import extract_text_from_pdf
 from coordinator import analyze
 
 st.set_page_config(page_title="Passage Analyzer (Mini-Agents)", layout="wide")
-st.title("📖 Passage Analyzer (Mini-Agent + Fallback)")
+st.title("Passage Analyzer (Mini-Agent + Fallback)")
 
 input_method = st.radio("Input type:", ["Paste Text", "Upload PDF"], horizontal=True)
 
@@ -19,8 +27,8 @@ else:
         elif not text.strip():
             st.warning("No extractable text found. PDF may be scanned (OCR not enabled).")
 
-use_llm = st.checkbox("🚀 Improve with LLM (optional)", value=False)
-show_debug = st.checkbox("🧪 Show debug", value=False)
+use_llm = st.checkbox("Improve with LLM (optional)", value=False)
+show_debug = st.checkbox("Show debug", value=False)
 
 if st.button("Analyze", type="primary"):
     if not text.strip():
@@ -32,11 +40,12 @@ if st.button("Analyze", type="primary"):
         st.subheader("✅ Results")
         st.write("**1) Total number of words:**", result["word_count"])
         
-        # Display emotion with confidence
         emotion = result["predominant_emotion"]
-        confidence = result.get("emotion_confidence", 0.0)
-        confidence_pct = int(confidence * 100)
-        st.write(f"**2) Predominant emotion:** {emotion} (confidence: {confidence_pct}%)")
+        confidence = result.get("emotion_confidence")
+        if confidence is not None:
+            st.write(f"**2) Predominant emotion:** {emotion} (confidence: {int(confidence * 100)}%)")
+        else:
+            st.write(f"**2) Predominant emotion:** {emotion} (via LLM)")
         
         st.write("**3) Possible books (2–3):**", result["possible_books"])
         st.write("**4) Summary (2–3 sentences):**")

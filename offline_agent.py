@@ -1,9 +1,20 @@
+"""
+Offline Agent Module
+
+Provides passage analysis without external API dependencies:
+- Word count: Exact count using regex tokenization
+- Emotion detection: Lexicon-based with 600+ emotion words and intensity modifiers
+- Summary: Extractive summarization using word frequency scoring
+- Book identification: Keyword matching against classic literary works
+"""
 import re
 from collections import Counter
 
+# Regex patterns for text processing
 WORD_RE = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)?")
 SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
+# Common words to exclude from frequency analysis
 STOPWORDS = {
     "the","a","an","and","or","but","if","then","so","because","of","to","in","on","for","with",
     "as","at","by","from","is","are","was","were","be","been","being","it","this","that",
@@ -11,9 +22,9 @@ STOPWORDS = {
     "have","has","had"
 }
 
+# Emotion vocabulary for lexicon-based detection
 EMOTION_LEXICON = {
     "joy": {
-        # Core joy words
         "joy","joyful","joyous","happy","happiness","happily","happier","happiest",
         "delight","delighted","delightful","smile","smiled","smiling","smiles",
         "laugh","laughed","laughing","laughter","laughs","grin","grinned","grinning",
@@ -43,7 +54,6 @@ EMOTION_LEXICON = {
         "relieved","relief","reassured","reassuring","comfort","comfortable","comforting","comforted",
     },
     "sadness": {
-        # Core sadness words
         "sad","sadness","sadly","sadder","saddest","saddened","saddening",
         "cry","cried","crying","cries","weep","wept","weeping","weeps",
         "tears","tearful","tearfully","teary",
@@ -72,7 +82,6 @@ EMOTION_LEXICON = {
         "tragic","tragedy","tragedies","tragically","lament","lamented","lamenting",
     },
     "anger": {
-        # Core anger words
         "anger","angry","angrily","angrier","angriest","angered",
         "rage","raging","raged","rages","enraged","enraging","outrage","outraged","outrageous",
         "furious","furiously","fury","fuming","fumed",
@@ -96,7 +105,6 @@ EMOTION_LEXICON = {
         "rant","ranting","ranted","rants","yell","yelled","yelling","shout","shouted","shouting",
     },
     "fear": {
-        # Core fear words
         "fear","feared","fearing","fears","fearful","fearfully","fearsome",
         "afraid","unafraid",
         "terror","terrified","terrifying","terrorized","terrorizing","terrible","terribly",
@@ -126,7 +134,6 @@ EMOTION_LEXICON = {
         "intimidate","intimidated","intimidating","intimidation",
     },
     "disgust": {
-        # Core disgust words
         "disgust","disgusted","disgusting","disgustingly",
         "filthy","filth","filthiness",
         "nasty","nastier","nastiest","nastiness",
@@ -153,7 +160,6 @@ EMOTION_LEXICON = {
         "sleazy","sleaziness","slimy","sliminess",
     },
     "surprise": {
-        # Core surprise words
         "surprise","surprised","surprising","surprisingly","surprises",
         "astonished","astonishing","astonishment","astonishingly",
         "amazed","amazing","amazingly","amazement",
@@ -179,18 +185,14 @@ EMOTION_LEXICON = {
     },
 }
 
-# Emotion intensity modifiers (boost emotion scores when found nearby)
+# Intensity modifiers
 INTENSIFIERS = {"very","extremely","incredibly","absolutely","totally","completely","utterly","deeply","profoundly","terribly","awfully","really","so","such","truly","genuinely"}
 DIMINISHERS = {"slightly","somewhat","a bit","kind of","sort of","barely","hardly","scarcely","little","mildly"}
 
-# Book hints for identifying possible source books
-# As per assignment: The Alchemist, Man's Search for Meaning, To Kill a Mockingbird + other classics
 BOOK_HINTS = {
-    # Primary books mentioned in assignment
     "The Alchemist — Paulo Coelho": {"dream","dreams","destiny","journey","soul","treasure","omen","omens","desert","legend","heart","personal","shepherd","Santiago","caravan","oasis","pyramids","universe","maktub"},
     "Man's Search for Meaning — Viktor Frankl": {"meaning","suffering","purpose","camp","camps","freedom","choice","dignity","logotherapy","prisoner","prisoners","Auschwitz","survive","psychological","existence","responsibility"},
     "To Kill a Mockingbird — Harper Lee": {"trial","court","judge","jury","town","race","racial","justice","Atticus","Scout","Finch","Maycomb","Alabama","mockingbird","innocent","Boo","Radley","Tom","Robinson"},
-    # Additional classic literary books
     "Pride and Prejudice — Jane Austen": {"marriage","estate","gentleman","lady","ball","Darcy","Elizabeth","Bennet","pride","prejudice","society","manners","courtship"},
     "1984 — George Orwell": {"party","Big Brother","Winston","thoughtcrime","telescreen","ministry","Oceania","freedom","slavery","war","peace","surveillance","doublethink"},
     "The Great Gatsby — F. Scott Fitzgerald": {"Gatsby","Daisy","Nick","West Egg","mansion","party","parties","wealth","green light","jazz","roaring","American dream"},
@@ -210,7 +212,9 @@ def _sentences(text: str):
     return [s.strip() for s in SENT_SPLIT_RE.split(t) if s.strip()]
 
 def word_count(text: str) -> int:
+    """Count total words in text."""
     return len(_tokenize(text))
+
 
 def emotion(text: str):
     """Analyze and return the predominant emotion in the text."""
@@ -258,6 +262,19 @@ def emotion(text: str):
     return top_emo, int_scores, float(conf)
 
 def summary(text: str, max_sentences: int = 3) -> str:
+    """
+    Generate extractive summary by selecting most important sentences.
+    
+    Uses word frequency to score sentences - sentences with more
+    frequent (important) words get higher scores.
+    
+    Args:
+        text: The passage to summarize
+        max_sentences: Maximum sentences to include (default: 3)
+        
+    Returns:
+        Summary string with top sentences in original order
+    """
     sents = _sentences(text)
     if not sents:
         return ""
@@ -280,6 +297,19 @@ def summary(text: str, max_sentences: int = 3) -> str:
     return " ".join(sents[i] for i in chosen)
 
 def possible_books(text: str, top_k: int = 3):
+    """
+    Identify possible source books using keyword matching.
+    
+    Compares text against known book vocabularies and returns
+    books with most keyword matches.
+    
+    Args:
+        text: The passage to analyze
+        top_k: Number of book suggestions to return
+        
+    Returns:
+        List of book titles (with authors)
+    """
     words = set(_tokenize(text))
     scored = []
     for book, kws in BOOK_HINTS.items():
@@ -289,6 +319,16 @@ def possible_books(text: str, top_k: int = 3):
     return out if out else [b for b, _ in scored[:top_k]]
 
 def run_offline(text: str):
+    """
+    Run complete offline analysis on text.
+    
+    Args:
+        text: The passage to analyze
+        
+    Returns:
+        Dict with word_count, predominant_emotion, emotion_scores,
+        emotion_confidence, possible_books, and summary
+    """
     wc = word_count(text)
     emo, emo_scores, emo_conf = emotion(text)
     summ = summary(text, max_sentences=3)
